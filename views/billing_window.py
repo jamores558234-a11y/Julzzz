@@ -35,7 +35,6 @@ SPIN_STYLE = """
     QDoubleSpinBox:focus{border:1.5px solid #2563eb;background:#fff;}
 """
 
-
 class BillingWindow(QWidget):
     data_changed = pyqtSignal()
 
@@ -45,8 +44,10 @@ class BillingWindow(QWidget):
         self.service_controller = ServiceController()
         self.db = DatabaseConnection()
         self.init_ui()
-        try: self.load_billing()
-        except Exception as e: print(f"Error loading billing: {e}")
+        try:
+            self.load_billing()
+        except Exception as e:
+            print(f"Error loading billing: {e}")
 
     def init_ui(self):
         self.setStyleSheet("background:#f8fafc;font-family:'Segoe UI',sans-serif;")
@@ -54,6 +55,7 @@ class BillingWindow(QWidget):
         layout.setContentsMargins(32, 28, 32, 28)
         layout.setSpacing(20)
 
+        # Header Section
         hf = QFrame()
         hf.setStyleSheet("QFrame{background:#fff;border-bottom:2px solid #e2e8f0;}")
         hl = QVBoxLayout(hf)
@@ -66,7 +68,7 @@ class BillingWindow(QWidget):
         hl.addWidget(sub)
         layout.addWidget(hf)
 
-        # Form
+        # Form Section
         ff = QFrame()
         ff.setStyleSheet("QFrame{background:#fff;border:1px solid #e5e7eb;border-radius:10px;}")
         fl = QVBoxLayout(ff)
@@ -85,8 +87,10 @@ class BillingWindow(QWidget):
         self.service_combo = QComboBox()
         self.service_combo.setStyleSheet(COMBO_STYLE)
         self.service_combo.setMinimumHeight(42)
-        try: self.load_services_combo()
-        except: pass
+        try:
+            self.load_services_combo()
+        except:
+            pass
         sc.addWidget(self.service_combo)
         row.addLayout(sc, 2)
 
@@ -104,26 +108,26 @@ class BillingWindow(QWidget):
         fl.addLayout(row)
         layout.addWidget(ff)
 
-        # Buttons
+        # Action Buttons
         br = QHBoxLayout()
         br.setSpacing(10)
 
         cb = QPushButton("➕  Create Billing")
-        cb.setStyleSheet(btn_style("#10b981","#059669","#047857"))
+        cb.setStyleSheet(btn_style("#10b981", "#059669", "#047857"))
         cb.setMinimumHeight(44)
         cb.setCursor(Qt.CursorShape.PointingHandCursor)
         cb.clicked.connect(self.create_billing)
         br.addWidget(cb)
 
         vb = QPushButton("👁  View Details")
-        vb.setStyleSheet(btn_style("#3b82f6","#2563eb","#1d4ed8"))
+        vb.setStyleSheet(btn_style("#3b82f6", "#2563eb", "#1d4ed8"))
         vb.setMinimumHeight(44)
         vb.setCursor(Qt.CursorShape.PointingHandCursor)
         vb.clicked.connect(self.view_billing_details)
         br.addWidget(vb)
 
         rb = QPushButton("🔄  Refresh")
-        rb.setStyleSheet(btn_style("#8b5cf6","#7c3aed"))
+        rb.setStyleSheet(btn_style("#8b5cf6", "#7c3aed"))
         rb.setMinimumHeight(44)
         rb.setCursor(Qt.CursorShape.PointingHandCursor)
         rb.clicked.connect(self.load_billing)
@@ -132,20 +136,25 @@ class BillingWindow(QWidget):
         br.addStretch()
         layout.addLayout(br)
 
-        # Table
+        # Updated Table Section to match Database View
         tf = QFrame()
         tf.setStyleSheet("QFrame{background:#fff;border:1px solid #e5e7eb;border-radius:10px;}")
         tl = QVBoxLayout(tf)
         tl.setContentsMargins(0, 0, 0, 0)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(8)
-        self.table.setHorizontalHeaderLabels(['ID','Service #','Vehicle','Parts Cost','Labor Fee','Total','Status','SvcID'])
-        self.table.setColumnHidden(7, True)
+        # Changed column count to 11 to fit all View data
+        self.table.setColumnCount(11)
+        self.table.setHorizontalHeaderLabels([
+            'ID', 'Service #', 'Vehicle', 'Model', 'Customer',
+            'Contact', 'Parts Cost', 'Labor Fee', 'Total', 'Status', 'Date'
+        ])
+
         self.table.setStyleSheet(SHARED_TABLE_STYLE + "QTableWidget{alternate-background-color:#fafafa;}")
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive) # Changed for better visibility
+        self.table.horizontalHeader().setStretchLastSection(True)
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
         tl.addWidget(self.table)
@@ -160,55 +169,71 @@ class BillingWindow(QWidget):
                     s.get('service_id'))
 
     def load_billing(self):
+        """Updated to map keys from vw_billing_summary"""
         try:
             billings = self.billing_controller.get_all_billing() or []
             self.table.setRowCount(len(billings))
             for row, b in enumerate(billings):
-                self.table.setItem(row,0,QTableWidgetItem(str(b.get('billing_id',''))))
-                self.table.setItem(row,1,QTableWidgetItem(str(b.get('service_id',''))))
-                self.table.setItem(row,2,QTableWidgetItem(b.get('plate_number','')))
-                self.table.setItem(row,3,QTableWidgetItem(format_currency(b.get('parts_cost',0))))
-                self.table.setItem(row,4,QTableWidgetItem(format_currency(b.get('labor_fee',0))))
-                self.table.setItem(row,5,QTableWidgetItem(format_currency(b.get('total_amount',0))))
-                self.table.setItem(row,6,QTableWidgetItem(b.get('status','')))
-                self.table.setItem(row,7,QTableWidgetItem(str(b.get('service_id',''))))
+                # Using .get() to safely pull from the database dictionary
+                self.table.setItem(row, 0, QTableWidgetItem(str(b.get('billing_id', ''))))
+                self.table.setItem(row, 1, QTableWidgetItem(str(b.get('service_id', ''))))
+                self.table.setItem(row, 2, QTableWidgetItem(b.get('plate_number', '')))
+                self.table.setItem(row, 3, QTableWidgetItem(b.get('model', '')))
+                self.table.setItem(row, 4, QTableWidgetItem(b.get('customer_name', '')))
+                self.table.setItem(row, 5, QTableWidgetItem(b.get('contact', '')))
+                self.table.setItem(row, 6, QTableWidgetItem(format_currency(b.get('parts_cost', 0))))
+                self.table.setItem(row, 7, QTableWidgetItem(format_currency(b.get('labor_fee', 0))))
+                self.table.setItem(row, 8, QTableWidgetItem(format_currency(b.get('total_amount', 0))))
+                self.table.setItem(row, 9, QTableWidgetItem(b.get('status', '')))
+
+                # Format timestamp to Date string
+                created_dt = str(b.get('created_at', ''))[:10]
+                self.table.setItem(row, 10, QTableWidgetItem(created_dt))
         except Exception as e:
             print(f"Error loading billing: {e}")
 
     def create_billing(self):
+        """Creates billing. Triggers in MySQL run immediately after the execute_query inside the controller."""
         try:
             service_id = self.service_combo.currentData()
             if not service_id:
-                QMessageBox.warning(self,"Validation Error","Please select a service.")
+                QMessageBox.warning(self, "Validation Error", "Please select a service.")
                 return
+
             labor_fee = self.labor_fee_spin.value()
-            result = self.db.execute_query("SELECT SUM(total_price) as total FROM service_parts WHERE service_id = %s",(service_id,))
+
+            # Fetch parts cost directly via query
+            result = self.db.execute_query("SELECT SUM(total_price) as total FROM service_parts WHERE service_id = %s", (service_id,))
             parts_cost = float(result[0]['total']) if result and result[0]['total'] else 0.0
+
             if self.billing_controller.create_billing(service_id, parts_cost, labor_fee):
-                QMessageBox.information(self,"Success","Billing created successfully.")
-                self.load_billing()
+                QMessageBox.information(self, "Success", "Billing created successfully.")
+                self.load_billing() # Refreshes table to show new data + any trigger results
                 self.data_changed.emit()
             else:
-                QMessageBox.warning(self,"Error","Failed to create billing. It may already exist.")
+                QMessageBox.warning(self, "Error", "Failed to create billing. It may already exist.")
         except Exception as e:
-            QMessageBox.critical(self,"Error",str(e))
+            QMessageBox.critical(self, "Error", str(e))
 
     def view_billing_details(self):
         try:
             row = self.table.currentRow()
             if row < 0:
-                QMessageBox.warning(self,"Selection Error","Please select a billing record first.")
+                QMessageBox.warning(self, "Selection Error", "Please select a billing record first.")
                 return
-            billing_id = int(self.table.item(row,0).text())
+
+            billing_id = int(self.table.item(row, 0).text())
+            # Note: Since the controller is updated, this b now includes Model, Contact, etc.
             b = self.billing_controller.get_billing(billing_id)
             if b:
-                msg = (f"Billing ID:    #{b.get('billing_id','')}\n"
-                       f"Service ID:    #{b.get('service_id','')}\n"
-                       f"Parts Cost:    {format_currency(b.get('parts_cost',0))}\n"
-                       f"Labor Fee:     {format_currency(b.get('labor_fee',0))}\n"
-                       f"Total Amount:  {format_currency(b.get('total_amount',0))}\n"
-                       f"Status:        {b.get('status','')}\n"
-                       f"Created:       {str(b.get('created_at',''))[:16]}")
-                QMessageBox.information(self,"Billing Details",msg)
+                msg = (f"Billing ID:    #{b.get('billing_id', '')}\n"
+                       f"Vehicle:       {b.get('plate_number', '')} ({b.get('model', '')})\n"
+                       f"Customer:      {b.get('customer_name', '')}\n"
+                       f"Contact:       {b.get('contact', '')}\n\n"
+                       f"Parts Cost:    {format_currency(b.get('parts_cost', 0))}\n"
+                       f"Labor Fee:     {format_currency(b.get('labor_fee', 0))}\n"
+                       f"Total Amount:  {format_currency(b.get('total_amount', 0))}\n"
+                       f"Status:        {b.get('status', '')}\n")
+                QMessageBox.information(self, "Billing Details", msg)
         except Exception as e:
-            QMessageBox.critical(self,"Error",str(e))
+            QMessageBox.critical(self, "Error", str(e))

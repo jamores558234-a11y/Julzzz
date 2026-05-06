@@ -1,4 +1,3 @@
-"""Login window - Enhanced formal design"""
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
                              QPushButton, QComboBox, QMessageBox, QFrame, QSizePolicy,
                              QGraphicsDropShadowEffect)
